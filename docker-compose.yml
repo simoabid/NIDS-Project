@@ -1,0 +1,229 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NIDS — Network Intrusion Detection System
+# docker-compose.yml  |  All 8 services
+#
+# Usage:
+#   docker-compose up --build -d        # start everything in the background
+#   docker-compose logs -f backend      # tail a single service
+#   docker-compose down                 # stop (volumes are preserved)
+#   docker-compose down -v              # stop AND wipe named volumes
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── 1. MongoDB ────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: nids_mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-changeme}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-nids}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db           # ← named volume: persists across restarts
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - nids_net
+
+  # ── 2. Redis ──────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: nids_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes   # AOF persistence
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data                  # ← named volume: persists AOF log
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - nids_net
+
+  # ── 3. AI Service (Python / FastAPI) ──────────────────────────────────────
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: nids_ai
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ai-service/model:/app/model   # mount model dir for hot-swap of weights
+      - ./ai-service/data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - nids_net
+
+  # ── 4. Backend API (Node.js / Express / TypeScript) ───────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nids_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGO_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-changeme}@mongo:27017/${MONGO_DB:-nids}?authSource=admin
+      REDIS_URL: redis://redis:6379
+      AI_SERVICE_URL: http://ai-service:8000
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+    ports:
+      - "5000:5000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - nids_net
+
+  # ── 5. Frontend Dashboard (React / Vite / TailwindCSS) ────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nids_frontend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:5000}
+      VITE_WS_URL: ${VITE_WS_URL:-http://localhost:5000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - nids_net
+
+  # ── 6. Nginx (Reverse Proxy) ───────────────────────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: nids_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # - "443:443"   # uncomment when TLS certificates are available
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # - ./infra/nginx/certs:/etc/nginx/certs:ro   # TLS certs (future)
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - nids_net
+
+  # ── 7. Prometheus (Metrics Scraping) ──────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: nids_prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - nids_net
+
+  # ── 8. Grafana (Dashboards) ────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: nids_grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-changeme}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_HTTP_PORT: 3001
+    ports:
+      - "3001:3001"
+    volumes:
+      - grafana_data:/var/lib/grafana              # ← named volume: persists dashboards
+      - ./infra/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - nids_net
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Named Volumes
+# These directories live in Docker's storage backend and survive `docker-compose
+# down`. Only `docker-compose down -v` will remove them.
+# ─────────────────────────────────────────────────────────────────────────────
+volumes:
+  mongo_data:
+    driver: local
+    labels:
+      com.nids.description: "MongoDB alert history and user data"
+
+  redis_data:
+    driver: local
+    labels:
+      com.nids.description: "Redis Streams AOF persistence"
+
+  prometheus_data:
+    driver: local
+    labels:
+      com.nids.description: "Prometheus time-series metrics storage"
+
+  grafana_data:
+    driver: local
+    labels:
+      com.nids.description: "Grafana dashboards and user settings"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Network
+# All services share one internal bridge network. Only ports explicitly listed
+# under `ports:` are exposed to the host machine.
+# ─────────────────────────────────────────────────────────────────────────────
+networks:
+  nids_net:
+    driver: bridge
+    name: nids_network

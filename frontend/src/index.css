@@ -1,0 +1,59 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Global styles — src/index.css
+   Tailwind v4: a single @import replaces the three v3 directives.
+   Custom design tokens and utilities are defined with CSS-native syntax
+   inside @theme { } — no tailwind.config.ts required.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@import "tailwindcss";
+
+/* ── Design Tokens ────────────────────────────────────────────────────────── */
+@theme {
+  /* Colour palette */
+  --color-brand-50:  #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-500: #6366f1;   /* primary indigo */
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+
+  --color-surface-900: #0f172a;  /* darkest background */
+  --color-surface-800: #1e293b;  /* card background */
+  --color-surface-700: #334155;  /* border / divider */
+
+  --color-danger-500:  #ef4444;
+  --color-danger-600:  #dc2626;
+  --color-warning-500: #f59e0b;
+  --color-success-500: #22c55e;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Border radius */
+  --radius-card: 0.75rem;
+  --radius-badge: 9999px;
+}
+
+/* ── Base reset & defaults ───────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--color-surface-900);
+  color: #f1f5f9;
+  min-height: 100vh;
+}
+
+/* ── Scrollbar styling (Webkit) ─────────────────────────────────────────── */
+::-webkit-scrollbar          { width: 6px; height: 6px; }
+::-webkit-scrollbar-track    { background: var(--color-surface-800); }
+::-webkit-scrollbar-thumb    { background: var(--color-surface-700); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-brand-500); }

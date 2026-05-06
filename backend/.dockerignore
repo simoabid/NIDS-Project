@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# backend/.dockerignore
+#
+# Files excluded from the Docker build context.
+# Keeping the context small speeds up builds and prevents secrets from leaking
+# into the image layers.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Secrets — NEVER include in an image ──────────────────────────────────────
+.env
+*.pem
+*.key
+*.crt
+
+# ── Development artifacts ─────────────────────────────────────────────────────
+node_modules/       # rebuilt inside the image by npm ci
+dist/               # rebuilt inside the image by tsc
+coverage/
+.nyc_output/
+
+# ── TypeScript source maps (optional — include if you want source-mapped logs)
+# *.map
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── IDE & OS ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── Git ───────────────────────────────────────────────────────────────────────
+.git/
+.gitignore
+
+# ── Docs & tests (not needed in the production image) ─────────────────────────
+*.md
+**/*.test.ts
+**/*.spec.ts

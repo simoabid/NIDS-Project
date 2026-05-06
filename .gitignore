@@ -1,0 +1,58 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# NIDS — Root .gitignore
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Secrets (never commit) ────────────────────────────────────────────────────
+# Pattern without a leading slash matches at ANY depth (root, backend/, etc.)
+.env
+*.pem
+*.key
+*.crt
+
+# ── Node.js ──────────────────────────────────────────────────────────────────
+node_modules/
+dist/
+build/
+.npm/
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.eggs/
+
+# ── AI / ML artefacts ─────────────────────────────────────────────────────────
+*.pkl          # serialised Scikit-Learn models
+*.h5           # TensorFlow / Keras model weights
+*.onnx         # ONNX exported models
+*.csv          # datasets can be large — store in DVC or a data lake instead
+*.parquet
+
+# ── Network captures ──────────────────────────────────────────────────────────
+*.pcap
+*.pcapng
+*.cap
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── IDE / OS ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+# Don't ignore docker-compose.yml — it's committed.
+# Do ignore any local override files:
+docker-compose.override.yml
+
+# ── Test coverage ─────────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+htmlcov/
