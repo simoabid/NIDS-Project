@@ -1,0 +1,16 @@
+# AI Service — Python dependencies
+# Phase 1: stub only — minimal runtime
+# Phase 2: uncomment ML frameworks as needed
+
+# ── API server ────────────────────────────────────────────────────────────────
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+
+# ── Redis Streams client ──────────────────────────────────────────────────────
+redis==5.2.1
+
+# ── Data / ML (uncomment in Phase 2) ─────────────────────────────────────────
+# numpy==1.26.4
+# pandas==2.2.3
+# scikit-learn==1.5.2
+# joblib==1.4.2

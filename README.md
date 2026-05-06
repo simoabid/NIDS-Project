@@ -146,8 +146,8 @@ nids-project/
 ### 1. Clone & Configure
 
 ```bash
-git clone <repo-url>
-cd nids-project
+git clone https://github.com/simoabid/NIDS-Project.git
+cd NIDS-Project
 
 # Copy environment template and fill in your values
 cp .env.example .env
