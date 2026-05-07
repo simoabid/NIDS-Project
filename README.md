@@ -316,4 +316,5 @@ Full project requirements are in [`docs/`](./docs/):
 
 - [`Cahier_des_charges_NIDS.pdf`](./docs/Cahier_des_charges_NIDS.pdf) — global system spec (architecture, use cases, sequence diagrams)
 - [`Cahier_des_Charges_Dashboard_NIDS.pdf`](./docs/Cahier_des_Charges_Dashboard_NIDS.pdf) — monitoring & dashboard module spec
-- [`Cahier_des_charges_IA.pdf`](./docs/Cahier_des_charges_IA.pdf) — AI/ML model specification
+- [`Cahier_des_Charges_IA.pdf`](./docs/Cahier_des_Charges_IA.pdf) — AI/ML model specification
+- [Phase 1 Summary](./phase1-summary.md) — Phase 1 project summary

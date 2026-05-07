@@ -1,6 +1,5 @@
 # AI Service — Python dependencies
-# Phase 1: stub only — minimal runtime
-# Phase 2: uncomment ML frameworks as needed
+# Shared between local dev (pip install -r) and Docker (Dockerfile COPY)
 
 # ── API server ────────────────────────────────────────────────────────────────
 fastapi==0.115.12
@@ -9,8 +8,12 @@ uvicorn[standard]==0.34.2
 # ── Redis Streams client ──────────────────────────────────────────────────────
 redis==5.2.1
 
-# ── Data / ML (uncomment in Phase 2) ─────────────────────────────────────────
-# numpy==1.26.4
-# pandas==2.2.3
-# scikit-learn==1.5.2
-# joblib==1.4.2
+# ── Data & ML ─────────────────────────────────────────────────────────────────
+numpy==2.4.4
+pandas==3.0.2
+scikit-learn==1.8.0
+joblib==1.5.3
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest==9.0.3
+httpx==0.28.1

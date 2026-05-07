@@ -23,11 +23,19 @@ __pycache__/
 .eggs/
 
 # ── AI / ML artefacts ─────────────────────────────────────────────────────────
-*.pkl          # serialised Scikit-Learn models
-*.h5           # TensorFlow / Keras model weights
-*.onnx         # ONNX exported models
-*.csv          # datasets can be large — store in DVC or a data lake instead
+# Serialised Scikit-Learn models
+*.pkl
+# TensorFlow / Keras model weights
+*.h5
+# ONNX exported models
+*.onnx
+# Datasets (store in DVC or a data lake instead)
+*.csv
 *.parquet
+# NSL-KDD dataset uses .txt — ignore large data files in ai-service/data/
+ai-service/data/*.txt
+# Keep JSON metadata (feature_columns.json, model_metadata.json) — they're small & text
+!ai-service/model/*.json
 
 # ── Network captures ──────────────────────────────────────────────────────────
 *.pcap
