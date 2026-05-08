@@ -51,6 +51,9 @@ logs/
 .idea/
 .DS_Store
 Thumbs.db
+.agent/
+.agents/
+skills-lock.json
 
 # ── Jupyter ───────────────────────────────────────────────────────────────────
 .ipynb_checkpoints/

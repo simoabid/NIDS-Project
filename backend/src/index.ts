@@ -6,6 +6,8 @@ import { connectDB, disconnectDB } from './config/db.js';
 import { connectRedis, disconnectRedis } from './config/redis.js';
 import logger from './config/logger.js';
 import { initSocket } from './services/socketService.js';
+import { startAlertSubscriber, stopAlertSubscriber } from './services/alertSubscriber.js';
+import { startStatsBroadcaster, stopStatsBroadcaster } from './services/statsBroadcaster.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Bootstrap
@@ -26,7 +28,13 @@ async function start(): Promise<void> {
     await connectDB();
     await connectRedis();
 
-    // 2. Start listening
+    // 2. Start the alert subscriber (needs Redis + Socket.io ready)
+    await startAlertSubscriber();
+
+    // 3. Start the periodic stats broadcaster
+    startStatsBroadcaster();
+
+    // 4. Start listening
     server.listen(env.PORT, () => {
       logger.info(`🚀  Backend running on http://localhost:${env.PORT}`);
       logger.info(`    Environment : ${env.NODE_ENV}`);
@@ -45,6 +53,8 @@ async function shutdown(signal: string): Promise<void> {
   logger.info(`Received ${signal} — shutting down gracefully…`);
 
   server.close(async () => {
+    stopStatsBroadcaster();
+    await stopAlertSubscriber();
     await disconnectDB();
     await disconnectRedis();
     logger.info('Server closed. Goodbye.');

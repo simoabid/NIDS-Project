@@ -149,8 +149,10 @@ services:
       - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       # - ./infra/nginx/certs:/etc/nginx/certs:ro   # TLS certs (future)
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     networks:
       - nids_net
 

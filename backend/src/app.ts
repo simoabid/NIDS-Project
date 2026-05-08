@@ -9,6 +9,9 @@ import { env } from './config/env.js';
 import logger from './config/logger.js';
 import { AppError } from './utils/AppError.js';
 import authRoutes from './routes/authRoutes.js';
+import alertRoutes from './routes/alertRoutes.js';
+import captureRoutes from './routes/captureRoutes.js';
+import auditRoutes from './routes/auditRoutes.js';
 
 const app: Application = express();
 
@@ -86,13 +89,10 @@ app.get('/api/health', (_req: Request, res: Response) => {
 });
 
 // ── API routes ──────────────────────────────────────────────────────────────
-app.use('/api/auth', authRoutes);
-
-// TODO: mount additional routers as they are built
-// app.use('/api/alerts',  authenticate, alertsRouter);
-// app.use('/api/stats',   authenticate, statsRouter);
-// app.use('/api/capture', authenticate, authorize('admin'), captureRouter);
-// app.use('/api/audit',   authenticate, authorize('admin'), auditRouter);
+app.use('/api/auth',      authRoutes);
+app.use('/api/alerts',    alertRoutes);
+app.use('/api/capture',   captureRoutes);
+app.use('/api/audit-log', auditRoutes);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 404 handler
