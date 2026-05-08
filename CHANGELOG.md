@@ -6,6 +6,57 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/
 
 ---
 
+## [v0.4.0] - 2026-05-08
+
+### Added
+- **AppLayout Shell** (`frontend/src/components/layout/AppLayout.tsx`) — collapsible sidebar navigation with route-aware active states, role-based link visibility (Capture/Audit hidden from viewers), top status bar with live capture indicator and logout button. Nested route structure via React Router `<Outlet>`.
+
+- **Login Form Integration** (`frontend/src/pages/LoginPage.tsx`) — wired to `POST /api/auth/login` with `tokenStore.set()` → `connectSocket(token)` → `navigate('/dashboard')`. Error handling for 401, 429 (rate limit), and network errors. Auto-focus, shake animation, password toggle.
+
+- **StatCards** (`frontend/src/components/dashboard/StatCards.tsx`) — four live metric cards (Total Events, DoS Attacks, Port Scans, Detection Rate) fed by `useStats()`. Updates every 10s via `stats:update` Socket.io event. K/M suffix formatting, semantic color coding, skeleton loading state.
+
+- **TrafficDonutChart** (`frontend/src/components/dashboard/TrafficDonutChart.tsx`) — Recharts `PieChart` donut showing Normal/DoS/PortScan distribution from `useStats().dbStats.byAttackType`. Custom tooltip, center total label, empty state handling.
+
+- **AlertBanner** (`frontend/src/components/dashboard/AlertBanner.tsx`) — persistent red/amber banner for DoS (critical) and PortScan (high) alerts. 8-second auto-dismiss with countdown progress bar. Sonner toast fires alongside for off-screen visibility. Normal traffic ignored.
+
+- **AlertsTable** (`frontend/src/components/alerts/AlertsTable.tsx`) — reusable table with compact/full modes. Columns: Timestamp (relative + tooltip), Source IP, Destination IP, Attack Type (color-coded), Confidence (progress bar + %), Severity badge (icon + color). Left border by severity for instant scanning, pulsing dot for alerts < 30s old.
+
+- **AlertsPage** (`frontend/src/pages/AlertsPage.tsx`) — full paginated alert history with attack type and severity filter dropdowns. Live alerts prepend via `alert:new` Socket.io event.
+
+- **CapturePage** (`frontend/src/pages/CapturePage.tsx`) — admin-only capture control panel. Status hero card with live/idle/processing states, mode selector (Live/PCAP), start/stop controls with danger-zone styling. Synced via `useCaptureStatus()` hook (REST + Socket.io).
+
+- **AuditPage** (`frontend/src/pages/AuditPage.tsx`) — admin-only forensic timeline. Vertical layout with domain-based color coding (Auth=blue, AI=purple, Capture=green, Alert=red, User=amber). Action and actor filter dropdowns, expandable metadata panels.
+
+- **React hooks architecture** — three custom hooks following the REST-on-mount + Socket-on-update pattern:
+
+  | Hook | REST | Socket Event | Reconnect |
+  | :--- | :--- | :--- | :--- |
+  | `useAlerts(filters?)` | `GET /api/alerts` | `alert:new` | Timestamp-based recovery |
+  | `useStats()` | `GET /api/alerts/stats` | `stats:update` | Full re-fetch |
+  | `useCaptureStatus()` | `GET /api/capture/status` | `capture:status` | Full re-fetch |
+
+- **WebSocket reconnection hardening** (`frontend/src/services/socket.ts`) — `reconnectionAttempts: Infinity`, exponential back-off up to 30s, connection counter with `isReconnect()` export. Counter resets on login/logout.
+
+- **Missed-alert recovery** (`frontend/src/hooks/useAlerts.ts`) — on reconnection, fetches alerts newer than `lastSeenTimestampRef`, deduplicates by ID (O(1) `Set` lookup), merges into existing list sorted by timestamp, capped at 200 in-memory.
+
+- **RBAC route guards** — `/capture` and `/audit-log` wrapped in `<PrivateRoute requiredRole="admin">`. Viewers see an "Access denied" screen with role requirement message.
+
+- **Phase 4 documentation** — `docs/phase4-summary.md` with component inventory, hooks architecture, design system tokens, and security enforcement matrix.
+
+### Changed
+- **`frontend/src/App.tsx`** — replaced all inline placeholder functions with real module imports. Nested route structure under `<AppLayout>` with admin-only `<PrivateRoute>` guards on `/capture` and `/audit-log`.
+- **`frontend/src/pages/DashboardPage.tsx`** — replaced `animate-pulse` skeleton with StatCards, TrafficDonutChart, AlertBanner, and compact AlertsTable.
+- **`frontend/src/services/socket.ts`** — `reconnection: true` (explicit), `reconnectionAttempts: 10 → Infinity`, `reconnectionDelayMax: 10,000 → 30,000`. Added `connectCount` counter and `isReconnect()` export for hook-level reconnection discrimination.
+- **`frontend/src/index.css`** — added animation keyframes (`fade-in-up`, `banner-countdown`) and design system colour tokens.
+- **All reconnect handlers** — `useAlerts`, `useStats`, `useCaptureStatus` now call `isReconnect()` to skip the initial connect event, eliminating redundant double-fetches on login.
+
+### Design Notes
+- **"Dark Luxury" aesthetic** — `#0f172a` page background, `#1e293b` card surfaces, `#6366f1` brand indigo accent. Severity colour coding consistent across all components: red=critical/DoS, orange=high/PortScan, green=low/Normal.
+- **Connection counter vs custom events** — initial approach of emitting a custom `nids:reconnected` event was abandoned because `socket.emit()` sends to the server, not local listeners. The connection counter approach is simpler and doesn't leak custom events across the wire.
+- **Timestamp-based recovery** — a blind page-1 re-fetch on reconnection replaces the entire alert list, losing scroll position and already-loaded data. Timestamp-based recovery fetches only the gap, merges without duplication, and preserves the existing list.
+
+---
+
 ## [v0.3.0] - 2026-05-08
 
 ### Added

@@ -1,14 +1,23 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/context/AuthContext'
 import PrivateRoute from '@/components/PrivateRoute'
+import AppLayout from '@/components/layout/AppLayout'
 import LoginPage from '@/pages/LoginPage'
 import DashboardPage from '@/pages/DashboardPage'
+import AlertsPage from '@/pages/AlertsPage'
+import CapturePage from '@/pages/CapturePage'
+import AuditPage from '@/pages/AuditPage'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // App — root router
 //
-// AuthProvider must wrap BrowserRouter so that any route component can call
-// useAuth() and so that the silent refresh runs before any route renders.
+// Nested route structure:
+//   /login                   — public (no layout)
+//   / (PrivateRoute)         — AppLayout wrapper
+//     /dashboard             — DashboardPage
+//     /alerts                — AlertsPage
+//     /capture               — CapturePage   (admin)
+//     /audit-log             — AuditPage     (admin)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -16,42 +25,40 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* ── Public routes ─────────────────────────────────────────── */}
+          {/* ── Public ──────────────────────────────────────────────── */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* ── Protected routes ─────────────────────────────────────── */}
+          {/* ── Protected — all share the AppLayout shell ──────────── */}
           <Route
-            path="/"
             element={
               <PrivateRoute>
-                <DashboardPage />
+                <AppLayout />
               </PrivateRoute>
             }
-          />
-
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute>
-                <DashboardPage />
-              </PrivateRoute>
-            }
-          />
-
-          {/*
-            Example of a role-restricted route (uncomment when the page exists):
+          >
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="alerts" element={<AlertsPage />} />
             <Route
-              path="/admin"
+              path="capture"
               element={
                 <PrivateRoute requiredRole="admin">
-                  <AdminPage />
+                  <CapturePage />
                 </PrivateRoute>
               }
             />
-          */}
+            <Route
+              path="audit-log"
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <AuditPage />
+                </PrivateRoute>
+              }
+            />
+          </Route>
 
-          {/* ── Catch-all ─────────────────────────────────────────────── */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* ── Catch-all ───────────────────────────────────────────── */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
