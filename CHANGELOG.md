@@ -6,9 +6,57 @@ This project follows the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/
 
 ---
 
-## [Unreleased]
+## [v0.3.0] - 2026-05-08
 
-<!-- Add Phase 3 changes here -->
+### Added
+- **Alert Model** (`backend/src/models/Alert.ts`) — Mongoose schema mirroring `AlertPayload` with auto-derived severity via pre-save hook (`DoS → critical`, `PortScan → high`, `Normal → low`), 30-day TTL index, and compound indexes for dashboard query patterns.
+
+- **AuditLog Model** (`backend/src/models/AuditLog.ts`) — security audit trail with fire-and-forget `record()` static method, 90-day TTL index. Tracks auth events, capture control, and AI decisions with actor/IP/metadata fields.
+
+- **Traffic Capture Service** (`backend/src/services/captureService.ts`) — event-driven Suricata `eve.json` tailing via `fs.watch` + `readline`. Extracts all 41 NSL-KDD features from flow events with sliding-window statistics, publishes to Redis Stream `traffic:raw` with `MAXLEN ~10,000` eviction. Supports live and pcap replay modes.
+
+- **Alert Subscriber** (`backend/src/services/alertSubscriber.ts`) — dedicated ioredis pub/sub connection subscribing to the `alerts` channel. Saves incoming AI predictions to MongoDB, writes audit log entries, and emits `alert:new` Socket.io events to all connected dashboard clients.
+
+- **Stats Broadcaster** (`backend/src/services/statsBroadcaster.ts`) — 10-second interval that queries MongoDB with a single `$facet` aggregation pipeline and emits `stats:update` via Socket.io. Fires once immediately on start so dashboards don't wait for the first interval.
+
+- **Alert REST API** — paginated alert history with filters (`attackType`, `severity`, `status`, `sourceIp`), aggregate statistics endpoint, single alert detail, and admin-only status lifecycle updates.
+
+  | Endpoint | Method | Auth |
+  | :--- | :--- | :--- |
+  | `GET /api/alerts` | Paginated list | authenticate |
+  | `GET /api/alerts/stats` | Aggregate breakdown | authenticate |
+  | `GET /api/alerts/:id` | Single alert | authenticate |
+  | `PATCH /api/alerts/:id/status` | Status update | admin |
+
+- **Capture REST API** — admin-only endpoints for starting/stopping live capture and processing pcap files. All mutations emit `capture:status` Socket.io events and create audit log entries.
+
+  | Endpoint | Method | Auth |
+  | :--- | :--- | :--- |
+  | `POST /api/capture/start` | Start live capture | admin |
+  | `POST /api/capture/stop` | Stop capture | admin |
+  | `POST /api/capture/pcap` | Process pcap file | admin |
+  | `GET /api/capture/status` | Current state | authenticate |
+
+- **Audit Log REST API** — `GET /api/audit-log` returning last N entries (default 100) with `action` and `actor` filters. Admin-only access.
+
+- **Boot sequence integration** — `alertSubscriber` and `statsBroadcaster` wired into startup (after Redis + Socket.io) and graceful shutdown (clearInterval → unsubscribe → disconnect).
+
+- **End-to-end pipeline verification** — tested full data flow: Redis `PUBLISH` → MongoDB persist → REST API returns alert; `XADD traffic:raw` → AI classifies → alert published → saved to Mongo. Auth/RBAC verified: unauthenticated → 401, viewer on admin routes → 403.
+
+- **Phase 3 documentation** — `docs/phase3-summary.md` with step-by-step implementation details, data flow diagram, file inventory, and security matrix.
+
+### Changed
+- **`docker-compose.yml`** — Nginx `depends_on` now uses `condition: service_healthy` for backend and frontend, fixing a restart loop caused by DNS resolution failures when Nginx started before backend registered.
+- **`.env.example`** — added Suricata/capture configuration: `CAPTURE_MODE`, `CAPTURE_PCAP_PATH`, `SURICATA_BIN`, `SURICATA_EVE_DIR`, `SURICATA_EVE_LOG`.
+- **`backend/src/app.ts`** — mounted `alertRoutes`, `captureRoutes`, `auditRoutes`; removed TODO stubs.
+- **`backend/src/index.ts`** — startup order: `connectDB → connectRedis → startAlertSubscriber → startStatsBroadcaster → listen`.
+- **`backend/package.json`** — added `axios` dependency for AI service HTTP calls.
+
+### Design Notes
+- The Alert Subscriber uses a **dedicated Redis connection** for pub/sub — subscriber mode blocks all other commands on that connection, so it cannot share the main client from `config/redis.ts`.
+- Severity is derived at the **model layer** (pre-save hook), not the controller, ensuring consistent severity regardless of entry point (REST API, subscriber, or direct insert).
+- The Stats Broadcaster uses a single `$facet` aggregation for all metrics in **one DB round-trip**, avoiding N+1 query patterns on the 10-second interval.
+- Capture service writes to Redis Streams with `MAXLEN ~10000` to bound memory usage — the `~` prefix lets Redis optimize trimming by removing entries in whole macro-nodes.
 
 ---
 
