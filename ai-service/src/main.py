@@ -190,14 +190,33 @@ def predict(request: PredictRequest) -> PredictResponse:
         raise HTTPException(status_code=503, detail="Model not loaded")
 
     try:
+        # Categorical columns need string defaults — the OneHotEncoder crashes
+        # with TypeError('isnan') if it receives integers instead of strings.
+        CATEGORICAL_DEFAULTS = {
+            "protocol_type": "tcp",
+            "service": "other",
+            "flag": "SF",
+        }
+
         # ── 1. Build a single-row DataFrame with correct column order ────────
         row = {}
         for col in _feature_columns:
             val = request.features.get(col)
-            if val is None:
-                row[col] = 0
+            if col in CATEGORICAL_DEFAULTS:
+                # Categorical: must be a string the OneHotEncoder was trained on
+                if val is None or not isinstance(val, str):
+                    row[col] = CATEGORICAL_DEFAULTS[col]
+                else:
+                    row[col] = val
             else:
-                row[col] = val
+                # Numeric: default missing values to 0
+                if val is None:
+                    row[col] = 0
+                else:
+                    try:
+                        row[col] = float(val)
+                    except (ValueError, TypeError):
+                        row[col] = 0
 
         df = pd.DataFrame([row], columns=_feature_columns)
 

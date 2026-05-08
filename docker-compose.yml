@@ -101,6 +101,11 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
     ports:
       - "5000:5000"
+    # ── Network capture capabilities ─────────────────────────────────────
+    # Suricata needs CAP_NET_RAW + CAP_NET_ADMIN to open network interfaces.
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
     depends_on:
       mongo:
         condition: service_healthy
@@ -122,13 +127,13 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # Vite bakes import.meta.env.VITE_* at compile time, so these MUST be
+        # build args (not runtime env). Points to the backend on the host.
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5000}
+        VITE_WS_URL: ${VITE_WS_URL:-http://localhost:5000}
     container_name: nids_frontend
     restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:5000}
-      VITE_WS_URL: ${VITE_WS_URL:-http://localhost:5000}
     ports:
       - "3000:3000"
     depends_on:

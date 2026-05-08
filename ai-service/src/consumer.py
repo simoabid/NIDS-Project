@@ -173,18 +173,31 @@ class RedisConsumer:
             t0 = time.perf_counter()
 
             # ── 1. Extract features ──────────────────────────────────────────
+            # Categorical columns need string defaults — the OneHotEncoder
+            # crashes with TypeError('isnan') if it receives numeric types.
+            CATEGORICAL_DEFAULTS = {
+                "protocol_type": "tcp",
+                "service": "other",
+                "flag": "SF",
+            }
+
             row: dict[str, Any] = {}
             for col in _feature_columns:
                 raw = data.get(col)
-                if raw is None:
-                    row[col] = 0
+                if col in CATEGORICAL_DEFAULTS:
+                    # Must stay as string for the OneHotEncoder
+                    if raw is None or raw == "" or raw == "0":
+                        row[col] = CATEGORICAL_DEFAULTS[col]
+                    else:
+                        row[col] = str(raw)
                 else:
-                    # Try to cast to float for numeric columns,
-                    # keep as string for categoricals
-                    try:
-                        row[col] = float(raw)
-                    except (ValueError, TypeError):
-                        row[col] = raw
+                    if raw is None:
+                        row[col] = 0
+                    else:
+                        try:
+                            row[col] = float(raw)
+                        except (ValueError, TypeError):
+                            row[col] = 0
 
             df = pd.DataFrame([row], columns=_feature_columns)
 

@@ -35,6 +35,11 @@ RUN npm run build
 # ── Stage 2: Production ───────────────────────────────────────────────────────
 FROM node:22-alpine AS production
 
+# ── Install Suricata — needed by captureService.ts for live network capture ──
+# Suricata is in Alpine's community repo. We also need libcap for cap_net_raw.
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
+ && apk add --no-cache suricata libcap
+
 # ── Security: create a non-root user ─────────────────────────────────────────
 # Running as root inside a container is a security risk. A dedicated system
 # user limits the blast radius if the process is ever compromised.
@@ -56,6 +61,12 @@ COPY --from=builder /app/dist ./dist
 
 # Transfer ownership of the working directory to our non-root user
 RUN chown -R nids:nodejs /app
+
+# Give the node binary network capture capabilities so the non-root user
+# can open network interfaces for Suricata's packet capture.
+# Note: We keep USER nids for normal operation; Suricata itself is spawned
+# with the right capabilities via setcap.
+RUN setcap 'cap_net_raw,cap_net_admin=eip' /usr/bin/suricata || true
 
 # Drop to non-root
 USER nids

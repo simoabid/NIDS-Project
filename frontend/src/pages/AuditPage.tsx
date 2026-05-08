@@ -16,7 +16,6 @@ import {
   ChevronDown,
   ChevronRight,
   Filter,
-  Loader2,
   RefreshCw,
 } from 'lucide-react'
 import api from '@/services/api'
