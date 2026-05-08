@@ -1,0 +1,29 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Prometheus — Scrape Configuration
+# infra/prometheus/prometheus.yml
+#
+# Scrapes metrics from backend and AI service health endpoints.
+# Add new targets as services expose /metrics endpoints.
+# ─────────────────────────────────────────────────────────────────────────────
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # ── Prometheus self-monitoring ──────────────────────────────────────────────
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ── Backend API ─────────────────────────────────────────────────────────────
+  - job_name: "backend"
+    metrics_path: /api/health
+    static_configs:
+      - targets: ["backend:5000"]
+
+  # ── AI Service ──────────────────────────────────────────────────────────────
+  - job_name: "ai-service"
+    metrics_path: /health
+    static_configs:
+      - targets: ["ai-service:8000"]
